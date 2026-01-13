@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=282, height=240, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Terminal - R1</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=VT323&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: 'JetBrains Mono', 'VT323', monospace;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            overflow: hidden;
+            width: 282px;
+            height: 240px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            /* Force landscape */
+            transform-origin: top left;
+        }
+        
+        .container {
+            width: 282px;
+            height: 240px;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(180deg, #0d0d0d 0%, #050505 100%);
+            position: relative;
+        }
+        
+        /* Header with logo, time, battery */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 6px 8px 4px;
+            border-bottom: 1px solid #1a1a1a;
+            background: #0a0a0a;
+        }
+        
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            line-height: 1;
+            color: #4a90d9;
+            white-space: pre;
+            letter-spacing: -0.5px;
+        }
+        
+        .logo .tm {
+            font-size: 6px;
+            vertical-align: super;
+            color: #4a90d9;
+        }
+        
+        .status-bar {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 1px;
+        }
+        
+        .time {
+            font-size: 11px;
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+        
+        .battery {
+            font-size: 9px;
+            color: #888;
+        }
+        
+        /* Terminal area */
+        .terminal-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 4px 8px;
+            overflow: hidden;
+            min-height: 0;
+        }
+        
+        .output-area {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            font-size: 9px;
+            line-height: 1.3;
+            padding-bottom: 4px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        
+        .output-area::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .output-line {
+            margin-bottom: 3px;
+            word-wrap: break-word;
+        }
+        
+        .output-line.user {
+            color: #4a90d9;
+        }
+        
+        .output-line.ai {
+            color: #7fba00;
+        }
+        
+        .output-line.system {
+            color: #666;
+            font-style: italic;
+        }
+        
+        .output-line.error {
+            color: #ff6b6b;
+        }
+        
+        .output-image {
+            max-width: 100%;
+            max-height: 60px;
+            border-radius: 3px;
+            margin: 3px 0;
+            border: 1px solid #333;
+        }
+        
+        .input-line {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding-top: 4px;
+            border-top: 1px solid #1a1a1a;
+        }
+        
+        .prompt {
+            color: #4a90d9;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .input-display {
+            flex: 1;
+            font-size: 10px;
+            color: #e0e0e0;
+            min-height: 14px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .cursor {
+            display: inline-block;
+            width: 6px;
+            height: 12px;
+            background: #4a90d9;
+            animation: blink 1s infinite;
+            margin-left: 1px;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        /* Action buttons */
+        .action-buttons {
+            display: flex;
+            gap: 4px;
+            margin-left: 4px;
+        }
+        
+        .action-btn {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 1px solid #333;
+            background: #1a1a1a;
+            color: #888;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        
+        .action-btn:active {
+            background: #2a2a2a;
+            transform: scale(0.95);
+        }
+        
+        .action-btn.recording {
+            background: #ff4444;
+            border-color: #ff6666;
+            color: #fff;
+            animation: pulse 1s infinite;
+        }
+        
+        .action-btn.camera-active {
+            background: #4a90d9;
+            border-color: #5aa0e9;
+            color: #fff;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* Keyboard */
+        .keyboard {
+            background: #0a0a0a;
+            padding: 4px;
+            border-top: 1px solid #1a1a1a;
+        }
+        
+        .keyboard-row {
+            display: flex;
+            justify-content: center;
+            gap: 3px;
+            margin-bottom: 3px;
+        }
+        
+        .keyboard-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .key {
+            min-width: 22px;
+            height: 24px;
+            border-radius: 6px;
+            border: 1.5px solid #2a2a2a;
+            background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+            color: #e0e0e0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        .key:active {
+            background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%);
+            transform: scale(0.95);
+            border-color: #3a3a3a;
+        }
+        
+        .key.special {
+            background: linear-gradient(180deg, #1f1f1f 0%, #141414 100%);
+            min-width: 32px;
+            font-size: 10px;
+        }
+        
+        .key.space {
+            flex: 1;
+            max-width: 140px;
+            background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+        }
+        
+        .key.enter {
+            background: linear-gradient(180deg, #ff6b35 0%, #e55a2b 100%);
+            color: #fff;
+            min-width: 38px;
+            border-color: #ff7b45;
+        }
+        
+        .key.enter:active {
+            background: linear-gradient(180deg, #e55a2b 0%, #d54a1b 100%);
+        }
+        
+        .key.backspace {
+            min-width: 38px;
+        }
+        
+        .key.shift {
+            min-width: 34px;
+        }
+        
+        /* Camera preview overlay */
+        .camera-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            z-index: 100;
+        }
+        
+        .camera-overlay.active {
+            display: flex;
+        }
+        
+        .camera-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            background: #0a0a0a;
+            border-bottom: 1px solid #1a1a1a;
+        }
+        
+        .camera-title {
+            font-size: 10px;
+            color: #4a90d9;
+        }
+        
+        .camera-close {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 1px solid #ff4444;
+            background: transparent;
+            color: #ff4444;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .camera-preview {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            position: relative;
+        }
+        
+        .camera-preview video {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .camera-controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 10px;
+            background: #0a0a0a;
+        }
+        
+        .capture-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            background: transparent;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .capture-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #fff;
+            transition: all 0.15s ease;
+        }
+        
+        .capture-btn:active::after {
+            transform: translate(-50%, -50%) scale(0.9);
+            background: #ddd;
+        }
+        
+        /* Loading indicator */
+        .loading {
+            display: inline-block;
+            font-size: 9px;
+            color: #888;
+        }
+        
+        .loading::after {
+            content: '';
+            animation: dots 1.5s infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+        
+        /* PTT indicator */
+        .ptt-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 68, 68, 0.9);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 10px;
+            display: none;
+            z-index: 50;
+            text-align: center;
+        }
+        
+        .ptt-indicator.active {
+            display: block;
+            animation: pulse 1s infinite;
+        }
+        
+        .ptt-indicator .mic-icon {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+        
+        /* Numbers keyboard */
+        .keyboard.numbers .keyboard-row {
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">╱┌─╲╱╷╭╮╱╷╭╮╲<span class="tm">tm</span>
+╱├┬╯├┤├┴╮├┤╲╵</div>
+            <div class="status-bar">
+                <div class="time" id="time">12:00pm</div>
+                <div class="battery" id="battery">batt 100%</div>
+            </div>
+        </div>
+        
+        <!-- Terminal Area -->
+        <div class="terminal-area">
+            <div class="output-area" id="output">
+                <div class="output-line system">Terminal v1.0 - R1 AI Interface</div>
+                <div class="output-line system">Type, speak (hold PTT), or use 📷</div>
+            </div>
+            <div class="input-line">
+                <span class="prompt">&gt;</span>
+                <div class="input-display">
+                    <span id="inputText"></span><span class="cursor"></span>
+                </div>
+                <div class="action-buttons">
+                    <button class="action-btn" id="cameraBtn" title="Camera">📷</button>
+                    <button class="action-btn" id="voiceBtn" title="Voice (or hold PTT)">🎤</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Keyboard -->
+        <div class="keyboard" id="keyboard">
+            <div class="keyboard-row">
+                <button class="key" data-key="q">q</button>
+                <button class="key" data-key="w">w</button>
+                <button class="key" data-key="e">e</button>
+                <button class="key" data-key="r">r</button>
+                <button class="key" data-key="t">t</button>
+                <button class="key" data-key="y">y</button>
+                <button class="key" data-key="u">u</button>
+                <button class="key" data-key="i">i</button>
+                <button class="key" data-key="o">o</button>
+                <button class="key" data-key="p">p</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key" data-key="a">a</button>
+                <button class="key" data-key="s">s</button>
+                <button class="key" data-key="d">d</button>
+                <button class="key" data-key="f">f</button>
+                <button class="key" data-key="g">g</button>
+                <button class="key" data-key="h">h</button>
+                <button class="key" data-key="j">j</button>
+                <button class="key" data-key="k">k</button>
+                <button class="key" data-key="l">l</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key special shift" data-key="shift">⇧</button>
+                <button class="key" data-key="z">z</button>
+                <button class="key" data-key="x">x</button>
+                <button class="key" data-key="c">c</button>
+                <button class="key" data-key="v">v</button>
+                <button class="key" data-key="b">b</button>
+                <button class="key" data-key="n">n</button>
+                <button class="key" data-key="m">m</button>
+                <button class="key special backspace" data-key="backspace">⌫</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key special" data-key="numbers">?123</button>
+                <button class="key" data-key=",">,</button>
+                <button class="key space" data-key=" "></button>
+                <button class="key" data-key=".">.</button>
+                <button class="key enter" data-key="enter">↵</button>
+            </div>
+        </div>
+        
+        <!-- Numbers/Symbols Keyboard (hidden by default) -->
+        <div class="keyboard numbers" id="keyboardNumbers" style="display: none;">
+            <div class="keyboard-row">
+                <button class="key" data-key="1">1</button>
+                <button class="key" data-key="2">2</button>
+                <button class="key" data-key="3">3</button>
+                <button class="key" data-key="4">4</button>
+                <button class="key" data-key="5">5</button>
+                <button class="key" data-key="6">6</button>
+                <button class="key" data-key="7">7</button>
+                <button class="key" data-key="8">8</button>
+                <button class="key" data-key="9">9</button>
+                <button class="key" data-key="0">0</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key" data-key="@">@</button>
+                <button class="key" data-key="#">#</button>
+                <button class="key" data-key="$">$</button>
+                <button class="key" data-key="%">%</button>
+                <button class="key" data-key="&">&amp;</button>
+                <button class="key" data-key="*">*</button>
+                <button class="key" data-key="-">-</button>
+                <button class="key" data-key="+">+</button>
+                <button class="key" data-key="=">=</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key" data-key="(">(</button>
+                <button class="key" data-key=")">)</button>
+                <button class="key" data-key="!">!</button>
+                <button class="key" data-key="'">'</button>
+                <button class="key" data-key='"'>"</button>
+                <button class="key" data-key=":">:</button>
+                <button class="key" data-key=";">;</button>
+                <button class="key" data-key="/">/</button>
+                <button class="key" data-key="?">?</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key special" data-key="abc">ABC</button>
+                <button class="key" data-key=",">,</button>
+                <button class="key space" data-key=" "></button>
+                <button class="key" data-key=".">.</button>
+                <button class="key enter" data-key="enter">↵</button>
+            </div>
+        </div>
+        
+        <!-- PTT Indicator -->
+        <div class="ptt-indicator" id="pttIndicator">
+            <div class="mic-icon">🎤</div>
+            Recording...
+        </div>
+        
+        <!-- Camera Overlay -->
+        <div class="camera-overlay" id="cameraOverlay">
+            <div class="camera-header">
+                <span class="camera-title">📷 Capture image for AI</span>
+                <button class="camera-close" id="cameraClose">✕</button>
+            </div>
+            <div class="camera-preview">
+                <video id="cameraVideo" autoplay playsinline></video>
+            </div>
+            <div class="camera-controls">
+                <button class="capture-btn" id="captureBtn"></button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { r1, createR1App, deviceControls } from './../../dist/index.js';
+        
+        // State
+        let inputText = '';
+        let isShift = false;
+        let isRecording = false;
+        let cameraStream = null;
+        let capturedImageBase64 = null;
+        let conversationHistory = [];
+        
+        // DOM elements
+        const inputDisplay = document.getElementById('inputText');
+        const outputArea = document.getElementById('output');
+        const keyboard = document.getElementById('keyboard');
+        const keyboardNumbers = document.getElementById('keyboardNumbers');
+        const cameraOverlay = document.getElementById('cameraOverlay');
+        const cameraVideo = document.getElementById('cameraVideo');
+        const pttIndicator = document.getElementById('pttIndicator');
+        const cameraBtn = document.getElementById('cameraBtn');
+        const voiceBtn = document.getElementById('voiceBtn');
+        const captureBtn = document.getElementById('captureBtn');
+        const cameraClose = document.getElementById('cameraClose');
+        
+        // Update time and battery
+        function updateStatus() {
+            const now = new Date();
+            let hours = now.getHours();
+            const ampm = hours >= 12 ? 'pm' : 'am';
+            hours = hours % 12 || 12;
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('time').textContent = `${hours}:${minutes}${ampm}`;
+            
+            // Try to get battery info
+            if (navigator.getBattery) {
+                navigator.getBattery().then(battery => {
+                    const level = Math.round(battery.level * 100);
+                    document.getElementById('battery').textContent = `batt ${level}%`;
+                });
+            }
+        }
+        
+        // Update input display
+        function updateInputDisplay() {
+            inputDisplay.textContent = inputText;
+        }
+        
+        // Add output line
+        function addOutput(text, type = 'system', imageUrl = null) {
+            const line = document.createElement('div');
+            line.className = `output-line ${type}`;
+            
+            if (imageUrl) {
+                const img = document.createElement('img');
+                img.className = 'output-image';
+                img.src = imageUrl;
+                img.alt = 'AI generated image';
+                line.appendChild(img);
+                line.appendChild(document.createElement('br'));
+            }
+            
+            line.appendChild(document.createTextNode(text));
+            outputArea.appendChild(line);
+            outputArea.scrollTop = outputArea.scrollHeight;
+        }
+        
+        // Add loading indicator
+        function addLoading() {
+            const line = document.createElement('div');
+            line.className = 'output-line ai';
+            line.id = 'loading';
+            line.innerHTML = '<span class="loading">AI thinking</span>';
+            outputArea.appendChild(line);
+            outputArea.scrollTop = outputArea.scrollHeight;
+            return line;
+        }
+        
+        // Remove loading indicator
+        function removeLoading() {
+            const loading = document.getElementById('loading');
+            if (loading) loading.remove();
+        }
+        
+        // Send message to AI
+        async function sendToAI(message, imageBase64 = null) {
+            if (!message.trim() && !imageBase64) return;
+            
+            // Show user message
+            const displayMsg = imageBase64 ? `[📷 Image] ${message || '(analyze this)'}` : message;
+            addOutput(`> ${displayMsg}`, 'user');
+            
+            // Clear input
+            inputText = '';
+            updateInputDisplay();
+            
+            // Show loading
+            addLoading();
+            
+            try {
+                // Prepare message options
+                const options = {
+                    useLLM: true,
+                    pluginId: 'terminal'
+                };
+                
+                if (imageBase64) {
+                    options.imageBase64 = imageBase64;
+                }
+                
+                // Send to LLM
+                await r1.messaging.sendMessage(message || 'Describe this image', options);
+                
+            } catch (error) {
+                removeLoading();
+                addOutput(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Handle keyboard key press
+        function handleKeyPress(key) {
+            switch (key) {
+                case 'enter':
+                    if (inputText.trim()) {
+                        sendToAI(inputText, capturedImageBase64);
+                        capturedImageBase64 = null;
+                        cameraBtn.classList.remove('camera-active');
+                    }
+                    break;
+                case 'backspace':
+                    inputText = inputText.slice(0, -1);
+                    break;
+                case 'shift':
+                    isShift = !isShift;
+                    updateKeyboardCase();
+                    break;
+                case 'numbers':
+                    keyboard.style.display = 'none';
+                    keyboardNumbers.style.display = 'block';
+                    break;
+                case 'abc':
+                    keyboardNumbers.style.display = 'none';
+                    keyboard.style.display = 'block';
+                    break;
+                default:
+                    let char = key;
+                    if (isShift && char.length === 1) {
+                        char = char.toUpperCase();
+                        isShift = false;
+                        updateKeyboardCase();
+                    }
+                    inputText += char;
+            }
+            updateInputDisplay();
+        }
+        
+        // Update keyboard case display
+        function updateKeyboardCase() {
+            const keys = keyboard.querySelectorAll('.key:not(.special):not(.enter)');
+            keys.forEach(key => {
+                const char = key.dataset.key;
+                if (char && char.length === 1) {
+                    key.textContent = isShift ? char.toUpperCase() : char.toLowerCase();
+                }
+            });
+            
+            const shiftKey = keyboard.querySelector('.shift');
+            if (shiftKey) {
+                shiftKey.style.background = isShift 
+                    ? 'linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%)' 
+                    : 'linear-gradient(180deg, #1f1f1f 0%, #141414 100%)';
+            }
+        }
+        
+        // Camera functions
+        async function openCamera() {
+            try {
+                cameraStream = await r1.camera.start({ facingMode: 'environment' });
+                cameraVideo.srcObject = cameraStream;
+                cameraOverlay.classList.add('active');
+            } catch (error) {
+                addOutput(`Camera error: ${error.message}`, 'error');
+            }
+        }
+        
+        function closeCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            cameraVideo.srcObject = null;
+            cameraOverlay.classList.remove('active');
+        }
+        
+        async function capturePhoto() {
+            try {
+                // Create canvas to capture frame
+                const canvas = document.createElement('canvas');
+                canvas.width = cameraVideo.videoWidth || 320;
+                canvas.height = cameraVideo.videoHeight || 240;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+                
+                // Get base64 image
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                capturedImageBase64 = dataUrl.split(',')[1];
+                
+                // Show indicator that image is ready
+                cameraBtn.classList.add('camera-active');
+                addOutput('[📷 Image captured - type message and press enter]', 'system');
+                
+                closeCamera();
+            } catch (error) {
+                addOutput(`Capture error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Voice recording functions
+        async function startRecording() {
+            if (isRecording) return;
+            
+            try {
+                isRecording = true;
+                pttIndicator.classList.add('active');
+                voiceBtn.classList.add('recording');
+                await r1.microphone.startRecording();
+            } catch (error) {
+                isRecording = false;
+                pttIndicator.classList.remove('active');
+                voiceBtn.classList.remove('recording');
+                addOutput(`Microphone error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function stopRecording() {
+            if (!isRecording) return;
+            
+            isRecording = false;
+            pttIndicator.classList.remove('active');
+            voiceBtn.classList.remove('recording');
+            
+            try {
+                const audioBlob = await r1.microphone.stopRecording();
+                
+                if (audioBlob && audioBlob.size > 0) {
+                    addOutput('[🎤 Voice message sent]', 'user');
+                    addLoading();
+                    
+                    // Convert audio to base64 and send
+                    const reader = new FileReader();
+                    reader.onloadend = async () => {
+                        const base64Audio = reader.result.split(',')[1];
+                        
+                        // For now, send a message indicating voice was captured
+                        // The R1 system should handle speech-to-text
+                        await r1.messaging.sendMessage('[Voice input]', {
+                            useLLM: true,
+                            pluginId: 'terminal',
+                            audioBase64: base64Audio
+                        });
+                    };
+                    reader.readAsDataURL(audioBlob);
+                }
+            } catch (error) {
+                addOutput(`Recording error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Initialize app
+        createR1App(async (sdk) => {
+            console.log('Terminal initialized');
+            
+            // Update time every minute
+            updateStatus();
+            setInterval(updateStatus, 60000);
+            
+            // Initialize device controls
+            deviceControls.init({
+                sideButtonEnabled: true,
+                scrollWheelEnabled: true,
+                keyboardFallback: true
+            });
+            
+            // PTT button handling (long press)
+            sdk.hardware.on('longPressStart', () => {
+                startRecording();
+            });
+            
+            sdk.hardware.on('longPressEnd', () => {
+                stopRecording();
+            });
+            
+            // Side click for quick voice toggle
+            sdk.hardware.on('sideClick', () => {
+                if (isRecording) {
+                    stopRecording();
+                } else {
+                    startRecording();
+                }
+            });
+            
+            // Scroll wheel to scroll output
+            sdk.hardware.on('scrollUp', () => {
+                outputArea.scrollTop -= 30;
+            });
+            
+            sdk.hardware.on('scrollDown', () => {
+                outputArea.scrollTop += 30;
+            });
+            
+            // Message handler for AI responses
+            sdk.messaging.onMessage((response) => {
+                removeLoading();
+                
+                if (response.parsedData) {
+                    // Handle structured response
+                    const data = response.parsedData;
+                    if (data.text) {
+                        addOutput(data.text, 'ai', data.imageUrl);
+                    } else if (data.response) {
+                        addOutput(data.response, 'ai', data.image);
+                    } else {
+                        addOutput(JSON.stringify(data), 'ai');
+                    }
+                } else if (response.message) {
+                    addOutput(response.message, 'ai');
+                } else if (typeof response === 'string') {
+                    addOutput(response, 'ai');
+                }
+                
+                // Store in conversation history
+                conversationHistory.push({
+                    role: 'assistant',
+                    content: response.message || response.parsedData?.text || ''
+                });
+            });
+        });
+        
+        // Keyboard event listeners
+        document.querySelectorAll('.key').forEach(key => {
+            key.addEventListener('click', (e) => {
+                e.preventDefault();
+                const keyValue = key.dataset.key;
+                if (keyValue) {
+                    handleKeyPress(keyValue);
+                }
+            });
+            
+            // Prevent double-tap zoom
+            key.addEventListener('touchend', (e) => {
+                e.preventDefault();
+            });
+        });
+        
+        // Action button listeners
+        cameraBtn.addEventListener('click', () => {
+            if (capturedImageBase64) {
+                // Clear captured image
+                capturedImageBase64 = null;
+                cameraBtn.classList.remove('camera-active');
+                addOutput('[📷 Image cleared]', 'system');
+            } else {
+                openCamera();
+            }
+        });
+        
+        voiceBtn.addEventListener('click', () => {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+        
+        // Camera overlay listeners
+        cameraClose.addEventListener('click', closeCamera);
+        captureBtn.addEventListener('click', capturePhoto);
+        
+        // Physical keyboard support (for testing)
+        document.addEventListener('keydown', (e) => {
+            if (cameraOverlay.classList.contains('active')) return;
+            
+            if (e.key === 'Enter') {
+                handleKeyPress('enter');
+            } else if (e.key === 'Backspace') {
+                handleKeyPress('backspace');
+            } else if (e.key === 'Shift') {
+                isShift = true;
+                updateKeyboardCase();
+            } else if (e.key.length === 1) {
+                inputText += e.key;
+                updateInputDisplay();
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift') {
+                isShift = false;
+                updateKeyboardCase();
+            }
+        });
+        
+        // Initial status update
+        updateStatus();
+    </script>
+</body>
+</html>
